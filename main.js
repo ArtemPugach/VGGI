@@ -10,29 +10,6 @@ function deg2rad(angle) {
 }
 
 
-// Constructor
-function Model(name) {
-    this.name = name;
-    this.iVertexBuffer = gl.createBuffer();
-    this.count = 0;
-
-    this.BufferData = function(vertices) {
-
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.iVertexBuffer);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STREAM_DRAW);
-
-        this.count = vertices.length/3;
-    }
-
-    this.Draw = function() {
-
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.iVertexBuffer);
-        gl.vertexAttribPointer(shProgram.iAttribVertex, 3, gl.FLOAT, false, 0, 0);
-        gl.enableVertexAttribArray(shProgram.iAttribVertex);
-   
-        gl.drawArrays(gl.LINE_STRIP, 0, this.count);
-    }
-}
 
 
 // Constructor
@@ -58,17 +35,29 @@ function ShaderProgram(name, program) {
  * (Note that the use of the above drawPrimitive function is not an efficient
  * way to draw with WebGL.  Here, the geometry is so simple that it doesn't matter.)
  */
-function draw() { 
-    gl.clearColor(0,0,0,1);
+function draw() {
+    const canvas = gl.canvas;
+    const width = Math.round(canvas.clientWidth * window.devicePixelRatio);
+    const height = Math.round(canvas.clientHeight * window.devicePixelRatio);
+
+    if (canvas.width !== width || canvas.height !== height) {
+        canvas.width = width;
+        canvas.height = height;
+    }
+
+    gl.viewport(0, 0, canvas.width, canvas.height);
+
+    gl.clearColor(0, 0, 0, 1);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     
     /* Set the values of the projection transformation */
-    let projection = m4.perspective(Math.PI/8, 1, 8, 12); 
+    let aspect = canvas.width / canvas.height;
+    let projection = m4.perspective(Math.PI / 10, aspect, 8, 12);
     
     /* Get the view matrix from the SimpleRotator object.*/
     let modelView = spaceball.getViewMatrix();
 
-    let rotateToPointZero = m4.axisRotation([0.707,0.707,0], 0.7);
+    let rotateToPointZero = m4.axisRotation([1, 0, 0], Math.PI / 2);
     let translateToPointZero = m4.translation(0,0,-10);
 
     let matAccum0 = m4.multiply(rotateToPointZero, modelView );
@@ -86,17 +75,7 @@ function draw() {
     surface.Draw();
 }
 
-function CreateSurfaceData()
-{
-    let vertexList = [];
 
-    for (let i=0; i<360; i+=5) {
-        vertexList.push( Math.sin(deg2rad(i)), 1, Math.cos(deg2rad(i)) );
-        vertexList.push( Math.sin(deg2rad(i)), 0, Math.cos(deg2rad(i)) );
-    }
-
-    return vertexList;
-}
 
 
 /* Initialize the WebGL context. Called from init() */
