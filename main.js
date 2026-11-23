@@ -25,11 +25,16 @@ function ShaderProgram(name, program) {
     // Location of the attribute variable in the shader program.
     this.iAttribVertex = -1;
     this.iAttribNormal = -1;
+    this.iAttribTangent = -1;
+    this.iAttribTexCoords = -1;
     // Location of the uniform matrix representing the combined transformation.
     this.iModelViewProjectionMatrix = -1;
     this.iModelViewMatrix = -1;
     this.iNormalMatrix = -1;
     this.iLightPosition = -1;
+    this.iTMU0 = -1;
+    this.iTMU1 = -1;
+    this.iTMU2 = -1;
 
     this.Use = function() {
         gl.useProgram(this.prog);
@@ -90,12 +95,18 @@ function draw() {
     gl.uniformMatrix4fv(shProgram.iNormalMatrix, false, normalMatrix );
     gl.uniform3fv(shProgram.iLightPosition, lightEye );
 
+    gl.uniform1i(shProgram.iTMU0, 0);
+    gl.uniform1i(shProgram.iTMU1, 1);
+    gl.uniform1i(shProgram.iTMU2, 2);
+
     surface.Draw();
 
     lightProgram.Use();
     gl.uniformMatrix4fv(lightProgram.iModelViewProjectionMatrix, false, modelViewProjection );
 
     gl.disableVertexAttribArray(shProgram.iAttribNormal);
+    gl.disableVertexAttribArray(shProgram.iAttribTangent);
+    gl.disableVertexAttribArray(shProgram.iAttribTexCoords);
     gl.bindBuffer(gl.ARRAY_BUFFER, lightBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(lightModel), gl.DYNAMIC_DRAW);
     gl.vertexAttribPointer(lightProgram.iAttribVertex, 3, gl.FLOAT, false, 0, 0);
@@ -119,7 +130,7 @@ function updateSurface() {
 
     let data = {};
     CreateSurfaceData(data, uSteps, vSteps);
-    surface.BufferData(data.verticesF32, data.normalsF32, data.indicesU16);
+    surface.BufferData(data);
 }
 
 
@@ -127,15 +138,20 @@ function updateSurface() {
 function initGL() {
     let prog = createProgram( gl, vertexShaderSource, fragmentShaderSource );
 
-    shProgram = new ShaderProgram('Gouraud', prog);
+    shProgram = new ShaderProgram('Textured', prog);
     shProgram.Use();
 
     shProgram.iAttribVertex              = gl.getAttribLocation(prog, "vertex");
     shProgram.iAttribNormal              = gl.getAttribLocation(prog, "normal");
+    shProgram.iAttribTangent             = gl.getAttribLocation(prog, "tangent");
+    shProgram.iAttribTexCoords           = gl.getAttribLocation(prog, "tex");
     shProgram.iModelViewProjectionMatrix = gl.getUniformLocation(prog, "ModelViewProjectionMatrix");
     shProgram.iModelViewMatrix           = gl.getUniformLocation(prog, "ModelViewMatrix");
     shProgram.iNormalMatrix              = gl.getUniformLocation(prog, "NormalMatrix");
     shProgram.iLightPosition             = gl.getUniformLocation(prog, "lightPosition");
+    shProgram.iTMU0                      = gl.getUniformLocation(prog, "iTMU0");
+    shProgram.iTMU1                      = gl.getUniformLocation(prog, "iTMU1");
+    shProgram.iTMU2                      = gl.getUniformLocation(prog, "iTMU2");
 
     let lightProg = createProgram( gl, lightVertexShaderSource, lightFragmentShaderSource );
 
@@ -147,6 +163,10 @@ function initGL() {
 
     surface = new Model('Surface');
     updateSurface();
+
+    surface.idTextureDiffuse  = LoadTexture("./textures/diffuse.jpg");
+    surface.idTextureSpecular = LoadTexture("./textures/specular.jpg");
+    surface.idTextureNormal   = LoadTexture("./textures/normal.jpg");
 
     gl.enable(gl.DEPTH_TEST);
 }
