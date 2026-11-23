@@ -3,13 +3,17 @@
 let gl;                         // The webgl context.
 let surface;                    // A surface model
 let shProgram;                  // A shader program
+let lightProgram;
+let lightBuffer;
 let spaceball;                  // A SimpleRotator object that lets the user rotate the view by mouse.
+
+const LIGHT_ORBIT_RADIUS = 2.0;
+const LIGHT_ORBIT_HEIGHT = 0.6;
+const LIGHT_ANGULAR_SPEED = 0.8;
 
 function deg2rad(angle) {
     return angle * Math.PI / 180;
 }
-
-
 
 
 // Constructor
@@ -20,10 +24,12 @@ function ShaderProgram(name, program) {
 
     // Location of the attribute variable in the shader program.
     this.iAttribVertex = -1;
-    // Location of the uniform specifying a color for the primitive.
-    this.iColor = -1;
+    this.iAttribNormal = -1;
     // Location of the uniform matrix representing the combined transformation.
     this.iModelViewProjectionMatrix = -1;
+    this.iModelViewMatrix = -1;
+    this.iNormalMatrix = -1;
+    this.iLightPosition = -1;
 
     this.Use = function() {
         gl.useProgram(this.prog);
@@ -31,10 +37,16 @@ function ShaderProgram(name, program) {
 }
 
 
-/* Draws a colored cube, along with a set of coordinate axes.
- * (Note that the use of the above drawPrimitive function is not an efficient
- * way to draw with WebGL.  Here, the geometry is so simple that it doesn't matter.)
- */
+function getLightPosition(time) {
+    const angle = LIGHT_ANGULAR_SPEED * time;
+    return [
+        LIGHT_ORBIT_RADIUS * Math.cos(angle),
+        LIGHT_ORBIT_RADIUS * Math.sin(angle),
+        LIGHT_ORBIT_HEIGHT
+    ];
+}
+
+
 function draw() {
     const canvas = gl.canvas;
     const width = Math.round(canvas.clientWidth * window.devicePixelRatio);
@@ -49,11 +61,11 @@ function draw() {
 
     gl.clearColor(0, 0, 0, 1);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-    
+
     /* Set the values of the projection transformation */
     let aspect = canvas.width / canvas.height;
-    let projection = m4.perspective(Math.PI / 10, aspect, 8, 12);
-    
+    let projection = m4.perspective(Math.PI / 10, aspect, 4, 16);
+
     /* Get the view matrix from the SimpleRotator object.*/
     let modelView = spaceball.getViewMatrix();
 
@@ -62,35 +74,79 @@ function draw() {
 
     let matAccum0 = m4.multiply(rotateToPointZero, modelView );
     let matAccum1 = m4.multiply(translateToPointZero, matAccum0 );
-        
+
     /* Multiply the projection matrix times the modelview matrix to give the
        combined transformation matrix, and send that to the shader program. */
     let modelViewProjection = m4.multiply(projection, matAccum1 );
 
+    let normalMatrix = m4.transpose(m4.inverse(matAccum1));
+
+    let lightModel = getLightPosition(performance.now() / 1000);
+    let lightEye   = m4.transformPoint(matAccum1, lightModel);
+
+    shProgram.Use();
     gl.uniformMatrix4fv(shProgram.iModelViewProjectionMatrix, false, modelViewProjection );
-    
-    /* Draw the six faces of a cube, with different colors. */
-    gl.uniform4fv(shProgram.iColor, [1,1,0,1] );
+    gl.uniformMatrix4fv(shProgram.iModelViewMatrix, false, matAccum1 );
+    gl.uniformMatrix4fv(shProgram.iNormalMatrix, false, normalMatrix );
+    gl.uniform3fv(shProgram.iLightPosition, lightEye );
 
     surface.Draw();
+
+    lightProgram.Use();
+    gl.uniformMatrix4fv(lightProgram.iModelViewProjectionMatrix, false, modelViewProjection );
+
+    gl.disableVertexAttribArray(shProgram.iAttribNormal);
+    gl.bindBuffer(gl.ARRAY_BUFFER, lightBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(lightModel), gl.DYNAMIC_DRAW);
+    gl.vertexAttribPointer(lightProgram.iAttribVertex, 3, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(lightProgram.iAttribVertex);
+    gl.drawArrays(gl.POINTS, 0, 1);
 }
 
 
+function animate() {
+    draw();
+    window.requestAnimationFrame(animate);
+}
+
+
+function updateSurface() {
+    const uSteps = parseInt(document.getElementById("uSlider").value);
+    const vSteps = parseInt(document.getElementById("vSlider").value);
+
+    document.getElementById("uValue").textContent = uSteps;
+    document.getElementById("vValue").textContent = vSteps;
+
+    let data = {};
+    CreateSurfaceData(data, uSteps, vSteps);
+    surface.BufferData(data.verticesF32, data.normalsF32, data.indicesU16);
+}
 
 
 /* Initialize the WebGL context. Called from init() */
 function initGL() {
     let prog = createProgram( gl, vertexShaderSource, fragmentShaderSource );
 
-    shProgram = new ShaderProgram('Basic', prog);
+    shProgram = new ShaderProgram('Gouraud', prog);
     shProgram.Use();
 
     shProgram.iAttribVertex              = gl.getAttribLocation(prog, "vertex");
+    shProgram.iAttribNormal              = gl.getAttribLocation(prog, "normal");
     shProgram.iModelViewProjectionMatrix = gl.getUniformLocation(prog, "ModelViewProjectionMatrix");
-    shProgram.iColor                     = gl.getUniformLocation(prog, "color");
+    shProgram.iModelViewMatrix           = gl.getUniformLocation(prog, "ModelViewMatrix");
+    shProgram.iNormalMatrix              = gl.getUniformLocation(prog, "NormalMatrix");
+    shProgram.iLightPosition             = gl.getUniformLocation(prog, "lightPosition");
+
+    let lightProg = createProgram( gl, lightVertexShaderSource, lightFragmentShaderSource );
+
+    lightProgram = new ShaderProgram('Light', lightProg);
+    lightProgram.iAttribVertex              = gl.getAttribLocation(lightProg, "vertex");
+    lightProgram.iModelViewProjectionMatrix = gl.getUniformLocation(lightProg, "ModelViewProjectionMatrix");
+
+    lightBuffer = gl.createBuffer();
 
     surface = new Model('Surface');
-    surface.BufferData(CreateSurfaceData());
+    updateSurface();
 
     gl.enable(gl.DEPTH_TEST);
 }
@@ -154,7 +210,10 @@ function init() {
         return;
     }
 
-    spaceball = new TrackballRotator(canvas, draw, 0);
+    document.getElementById("uSlider").addEventListener("input", updateSurface);
+    document.getElementById("vSlider").addEventListener("input", updateSurface);
 
-    draw();
+    spaceball = new TrackballRotator(canvas, null, 0);
+
+    animate();
 }

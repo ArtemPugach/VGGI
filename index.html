@@ -2,10 +2,17 @@
 <html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 
-<title>PA#1</title>
+<title>PA#2</title>
 <style>
     body {
         background-color: #EEEEEE;
+    }
+    #controls {
+        display: grid;
+        grid-template-columns: max-content 320px 3em;
+        gap: 6px 12px;
+        align-items: center;
+        margin-bottom: 12px;
     }
 </style>
 
@@ -18,11 +25,21 @@
 </head>
 <body onload="init()">
 
-<h2>Practical Assignment 1 - Surface of Revolution "Pear"</h2>
+<h2>Practical Assignment 2 - Lighting of the Surface of Revolution "Pear"</h2>
 
-<p id="message">Drag your mouse on the cube to rotate it.<br>
-(On a touch screen, you can use your finger.)</p>
+<p id="message">Variant 18: Gouraud shading, analytic vertex normals.
+Point light source (white dot) rotates around the surface.<br>
+Drag your mouse on the surface to rotate it. (On a touch screen, you can use your finger.)</p>
 
+<div id="controls">
+    <label for="uSlider">U granularity (along the profile)</label>
+    <input type="range" id="uSlider" min="4" max="150" step="1" value="60">
+    <span id="uValue">60</span>
+
+    <label for="vSlider">V granularity (around the axis)</label>
+    <input type="range" id="vSlider" min="3" max="150" step="1" value="60">
+    <span id="vValue">60</span>
+</div>
 
 <div id="canvas-holder">
    <canvas id="webglcanvas" style="display: block; width: 100%; height: auto;"></canvas>
