@@ -210,7 +210,7 @@ function CreateSurfaceData(data, uSteps, vSteps)
 
         for (let j = 0; j <= vSteps; j++) {
             const beta = 2 * Math.PI * j / vSteps;
-            const uv = [TEX_REPEAT_U * j / vSteps, TEX_REPEAT_V * i / uSteps];
+            const uv = [TEX_REPEAT_U * j / vSteps, TEX_REPEAT_V * (1 - i / uSteps)];
 
             vertices.push( new Vertex(pearPoint(z, beta), uv, AnalyticNormal(z, beta)) );
         }

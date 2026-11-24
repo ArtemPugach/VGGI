@@ -42,6 +42,10 @@ uniform sampler2D iTMU2;
 
 uniform vec3 lightPosition;
 
+uniform vec2  texPoint;
+uniform float texAngle;
+uniform float texPeriodU;
+
 varying vec3 vPosition;
 varying vec3 vNormal;
 varying vec3 vTangent;
@@ -58,14 +62,22 @@ void main() {
     vec3 B = cross(N, T) * vHandedness;
     mat3 TBN = mat3(T, B, N);
 
-    vec3 texNormal = texture2D(iTMU2, vTexCoord).rgb * 2.0 - 1.0;
+    vec2 d = vTexCoord - texPoint;
+    d.x -= texPeriodU * floor(d.x / texPeriodU + 0.5);
+
+    float c = cos(texAngle);
+    float s = sin(texAngle);
+    vec2 uv = texPoint + vec2(c * d.x - s * d.y, s * d.x + c * d.y);
+
+    vec3 texNormal = texture2D(iTMU2, uv).rgb * 2.0 - 1.0;
+    texNormal.xy = vec2(c * texNormal.x + s * texNormal.y, -s * texNormal.x + c * texNormal.y);
     vec3 n = normalize(TBN * texNormal);
 
     vec3 L = normalize(lightPosition - vPosition);
     vec3 V = vec3(0.0, 0.0, 1.0);
 
-    vec3  diffuseTex  = texture2D(iTMU0, vTexCoord).rgb;
-    float specularTex = texture2D(iTMU1, vTexCoord).r;
+    vec3  diffuseTex  = texture2D(iTMU0, uv).rgb;
+    float specularTex = texture2D(iTMU1, uv).r;
 
     float lambert = max(dot(n, L), 0.0);
 
@@ -98,8 +110,10 @@ void main() {
 const lightFragmentShaderSource = `
 precision mediump float;
 
+uniform vec4 color;
+
 void main() {
     vec2 d = gl_PointCoord - vec2(0.5);
     if (dot(d, d) > 0.25) discard;
-    gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
+    gl_FragColor = color;
 }`;

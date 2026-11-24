@@ -2,14 +2,14 @@
 <html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 
 
-<title>Control Task</title>
+<title>CGW</title>
 <style>
     body {
         background-color: #EEEEEE;
     }
     #controls {
         display: grid;
-        grid-template-columns: max-content 320px 3em;
+        grid-template-columns: max-content 320px 4em;
         gap: 6px 12px;
         align-items: center;
         margin-bottom: 12px;
@@ -26,11 +26,12 @@
 </head>
 <body onload="init()">
 
-<h2>Control Task - Texturing of the Surface of Revolution "Pear"</h2>
+<h2>Calculation and Graphics Work - Texture Rotation around a User Specified Point</h2>
 
-<p id="message">Variant 18: diffuse, specular and normal textures, Gram-Schmidt orthogonalization with normal priority.
+<p id="message">Variant 18: rotation of the texture around the point (red dot).
 Point light source (white dot) rotates around the surface.<br>
-Drag your mouse on the surface to rotate it. (On a touch screen, you can use your finger.)</p>
+Keys A / D move the point along u, keys W / S move the point along v.
+Drag your mouse on the surface to rotate it.</p>
 
 <div id="controls">
     <label for="uSlider">U granularity (along the profile)</label>
@@ -40,6 +41,14 @@ Drag your mouse on the surface to rotate it. (On a touch screen, you can use you
     <label for="vSlider">V granularity (around the axis)</label>
     <input type="range" id="vSlider" min="3" max="150" step="1" value="60">
     <span id="vValue">60</span>
+
+    <label for="angleSlider">Texture rotation angle</label>
+    <input type="range" id="angleSlider" min="-180" max="180" step="1" value="0">
+    <span id="angleValue">0°</span>
+
+    <span>Rotation point</span>
+    <span id="pointValue"></span>
+    <span></span>
 </div>
 
 <div id="canvas-holder">
